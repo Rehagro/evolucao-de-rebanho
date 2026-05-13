@@ -21,12 +21,6 @@ const DATA_ROWS = [
   { key: 'secagens',       label: 'Secagens',          color: 'var(--color-status-mid)',    get: (m: MesProjetado) => Math.round(m.secagens) },
 ]
 
-const _LBLW   = 156
-const _HDR_H  = 38
-const _DISC_H = 34
-const CH     = 210
-const _ROW_H  = 32
-const BMAX   = 28
 const BGAP   = 2
 
 /* ── CvInput: local text state so typing "-" works correctly ── */
