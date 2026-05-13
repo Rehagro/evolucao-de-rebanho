@@ -149,6 +149,12 @@ export async function exportarRelatorioPDF({
   const labelStep = nMeses <= 12 ? 1 : nMeses <= 24 ? 2 : nMeses <= 48 ? 3 : 6
   const labelFont = nMeses <= 12 ? 7 : nMeses <= 24 ? 6 : 5
 
+  // Rótulos de dados: sempre mostrar quando val > 0. Adapta fonte + orientação
+  // ao horizonte/largura da barra. Em horizontes longos as barras ficam estreitas
+  // e os rótulos rotacionam pra caber.
+  const dataFontSize = nMeses <= 12 ? 5 : nMeses <= 24 ? 4 : 3.5
+  const labelRotacionado = barW < 3.0   // bar muito estreita → vira na vertical
+
   meses.forEach((m, i) => {
     const cx = chartX + labelGutter + i * colW + colW / 2
     seriesEfetivo.forEach((s, si) => {
@@ -160,10 +166,16 @@ export async function exportarRelatorioPDF({
       doc.setFillColor(r, g, b)
       doc.rect(bx, by, barW * 0.9, bH, 'F')
 
-      if (val > 0 && barW >= 3.5 && nMeses <= 12) {
-        doc.setFontSize(5)
+      if (val > 0) {
+        doc.setFontSize(dataFontSize)
         doc.setTextColor(r, g, b)
-        doc.text(String(Math.round(val)), bx + (barW * 0.9) / 2, by - 0.5, { align: 'center' })
+        const cxBar = bx + (barW * 0.9) / 2
+        if (labelRotacionado) {
+          // Rotaciona 90° (vertical), texto fica acima da barra crescendo pra cima
+          doc.text(String(Math.round(val)), cxBar, by - 0.6, { align: 'left', angle: 90 })
+        } else {
+          doc.text(String(Math.round(val)), cxBar, by - 0.6, { align: 'center' })
+        }
       }
     })
     if (i % labelStep === 0) {
