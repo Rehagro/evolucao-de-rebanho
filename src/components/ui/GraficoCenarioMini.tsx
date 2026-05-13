@@ -99,10 +99,15 @@ export function GraficoCenarioMini({ projecao, horizonte, categorias, tall = fal
   const BGAP = modo === 'anual' ? 8 : 2
   const CH = tall ? 480 : 200
 
-  // Em horizontes longos, mostrar label de mês a cada N pra não encavalar
-  const labelStep = modo === 'anual'
-    ? 1
-    : (horizonte <= 12 ? 1 : horizonte <= 24 ? 2 : horizonte <= 36 ? 3 : horizonte <= 60 ? 4 : 6)
+  // Regra do labelStep:
+  //   - até 48m: sempre todos os meses (cabe folgado)
+  //   - 60m e 84m: depende do filtro de categorias (>3 barras encavala
+  //     o eixo → pula 1; com ≤3 sobra espaço → mostra todos)
+  const labelStep = (() => {
+    if (modo === 'anual') return 1
+    if (horizonte <= 48) return 1
+    return visOrd.length > 3 ? 2 : 1   // 60m e 84m
+  })()
 
   // bar min 4px (era 6) pra garantir que 5 cats cabem em colW de horizontes longos.
   // Antes, 5 bars × 6px + 4 gaps × 2px = 38px > colW (28px em 84m) → bezerras
