@@ -151,8 +151,8 @@ export function TelaCenarios({ fazenda, onSalvar }: Props) {
         )}
       </div>
 
-      {/* Painéis */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Painéis empilhados (A em cima, B embaixo) para comparação mês a mês */}
+      <div className="grid grid-cols-1 gap-4">
         <CenarioPainel
           slot="A"
           snapshot={fazenda.cenarioA}

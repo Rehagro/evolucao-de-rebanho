@@ -4,6 +4,7 @@ import { Card, CardContent } from './Card'
 import { Button } from './Button'
 import { Modal } from './Modal'
 import { GraficoCenarioMini } from './GraficoCenarioMini'
+import { TabelaResumoAnual } from './TabelaResumoAnual'
 import type { Cenario, ResultadoProjecao } from '@/types'
 import type { CategoriaRebanho } from '@/lib/coresCategorias'
 
@@ -65,11 +66,18 @@ export function CenarioPainel({ slot, snapshot, projecao, horizonte, categorias,
       </div>
       <CardContent className="pt-4">
         {projecao ? (
-          <GraficoCenarioMini
-            projecao={projecao}
-            horizonte={horizonte}
-            categorias={categorias}
-          />
+          <>
+            <GraficoCenarioMini
+              projecao={projecao}
+              horizonte={horizonte}
+              categorias={categorias}
+            />
+            <TabelaResumoAnual
+              projecao={projecao}
+              horizonte={horizonte}
+              categorias={categorias}
+            />
+          </>
         ) : (
           <p className="text-xs text-ink-4 text-center py-6">
             Projeção indisponível — snapshot pode ter sido salvo sem cálculo.

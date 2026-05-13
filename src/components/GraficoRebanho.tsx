@@ -79,17 +79,23 @@ export function GraficoRebanho({ projecao, params, hz, setHz, discOvr, setDiscOv
   const [fullscreenOpen, setFullscreenOpen] = useState(false)
   const [exportingPDF, setExportingPDF] = useState(false)
 
+  const [vis, setVis] = useState<Set<CategoriaRebanho>>(new Set(ORDEM_CATEGORIAS))
+
   const handleExportPDF = async () => {
     if (!fazenda || exportingPDF) return
     setExportingPDF(true)
     try {
-      await exportarRelatorioPDF({ fazenda, projecao, params })
+      await exportarRelatorioPDF({
+        fazenda,
+        projecao,
+        params,
+        categoriasVisiveis: vis,
+        horizonte: hz,
+      })
     } finally {
       setExportingPDF(false)
     }
   }
-
-  const [vis, setVis] = useState<Set<CategoriaRebanho>>(new Set(ORDEM_CATEGORIAS))
 
   const meses = projecao.meses.slice(0, hz)
   const visOrd = ORDEM_CATEGORIAS.filter(k => vis.has(k))

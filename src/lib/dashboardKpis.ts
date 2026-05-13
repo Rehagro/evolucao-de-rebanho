@@ -14,7 +14,7 @@ export interface KpisDashboard {
   partosTotal: number
   partosVacas: number
   partosNovilhas: number
-  /** Taxa de parição no período: Σ partos / mean(VL+VS) (0–1, %). */
+  /** Taxa de parição ANUALIZADA (independente do tamanho do filtro): partos por vaca por ano (0–1, %). */
   taxaParicao: number
   /** (VL + VS) / rebanho total no último mês (0–1). */
   vacasSobreRebanho: number
@@ -55,12 +55,13 @@ export function calcularKpisDashboard(meses: MesProjetado[]): KpisDashboard {
   const partosNovilhas = meses.reduce((s, m) => s + m.partosNovilhas, 0)
   const partosTotal = partosVacas + partosNovilhas
 
-  // Taxa de parição = Σ partos / mean(VL+VS) no período filtrado.
-  // Em 12m com rebanho estável, equivale à "taxa anual de parição" (típico 70–100%).
-  // Em 24m, deve dar ~150–200% (cada vaca pare ~1.5 vezes em 2 anos).
+  // Taxa de parição ANUALIZADA, independente do tamanho do filtro:
+  //   = (média mensal de partos / média mensal de VL+VS) × 12
+  //   = Σ partos × 12 / Σ(VL+VS)
+  // Para 12m de filtro com rebanho ~800 vacas e 600 partos: 600 × 12 / 9600 = 75%
+  // Para 24m com mesmas médias mensais: 1200 × 12 / 19200 = 75% (não dobra)
   const totalVacasMensal = meses.reduce((s, m) => s + m.vacasLactacao + m.vacasSecas, 0)
-  const mediaVacas = totalVacasMensal / meses.length
-  const taxaParicao = mediaVacas > 0 ? partosTotal / mediaVacas : 0
+  const taxaParicao = totalVacasMensal > 0 ? (partosTotal * 12) / totalVacasMensal : 0
 
   const primeiro = meses[0]
   const ultimo = meses[meses.length - 1]

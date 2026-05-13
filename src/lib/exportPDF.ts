@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { Fazenda, ResultadoProjecao, Parametros } from '@/types'
-import { CORES_CATEGORIAS } from '@/lib/coresCategorias'
+import { CORES_CATEGORIAS, type CategoriaRebanho } from '@/lib/coresCategorias'
 import logoRehagroUrl from '@/assets/logo-rehagro-tratada.png'
 
 const MESES_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
@@ -46,9 +46,18 @@ interface ExportParams {
   fazenda: Fazenda
   projecao: ResultadoProjecao
   params: Parametros
+  /** Conjunto de categorias visíveis (filtro do dashboard). Default: todas. */
+  categoriasVisiveis?: Set<CategoriaRebanho>
+  /** Horizonte em meses (default 12). */
+  horizonte?: number
 }
 
-export async function exportarRelatorioPDF({ fazenda, projecao }: ExportParams): Promise<void> {
+export async function exportarRelatorioPDF({
+  fazenda,
+  projecao,
+  categoriasVisiveis,
+  horizonte = 12,
+}: ExportParams): Promise<void> {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
   const W = 297
   const H = 210
@@ -85,27 +94,39 @@ export async function exportarRelatorioPDF({ fazenda, projecao }: ExportParams):
     agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
   doc.setFontSize(8)
   doc.setTextColor(130, 130, 130)
-  doc.text(`Gerado em ${dataGeracao}  ·  Horizonte: 12 meses`, W / 2, M + 17, { align: 'center' })
+  doc.text(`Gerado em ${dataGeracao}  ·  Horizonte: ${horizonte} meses`, W / 2, M + 17, { align: 'center' })
 
-  // ── Gráfico de barras (4 séries × 12 meses) ────────────────────────────────
-  const meses12 = projecao.meses.slice(0, 12)
+  // ── Gráfico de barras — categorias e horizonte conforme filtro do dashboard ──
+  const meses = projecao.meses.slice(0, horizonte)
+  const nMeses = meses.length
   const chartX = M
   const chartY = M + 22
   const chartW = W - 2 * M
   const chartH = 75
   const labelGutter = 12
 
-  const series = [
-    { key: 'vacasLactacao',  label: 'VL',       color: CORES_CATEGORIAS.vacasLactacao },
-    { key: 'vacasSecas',     label: 'VS',       color: CORES_CATEGORIAS.vacasSecas },
-    { key: 'bezerras0_12m',  label: 'Bezerras', color: CORES_CATEGORIAS.bezerras0_12m },
-    { key: 'novilhas12_24m', label: 'Novilhas', color: CORES_CATEGORIAS.novilhas12_24m },
+  const TODAS_SERIES = [
+    { key: 'vacasLactacao',  label: 'VL',                color: CORES_CATEGORIAS.vacasLactacao },
+    { key: 'vacasSecas',     label: 'VS',                color: CORES_CATEGORIAS.vacasSecas },
+    { key: 'bezerras0_12m',  label: 'Bezerras 0–12m',    color: CORES_CATEGORIAS.bezerras0_12m },
+    { key: 'novilhas12_24m', label: 'Novilhas 12–23m',   color: CORES_CATEGORIAS.novilhas12_24m },
+    { key: 'novilhasPrenhas', label: 'Novilhas Prenhas', color: CORES_CATEGORIAS.novilhasPrenhas },
   ] as const
+
+  // Filtra séries pelo filtro do dashboard (se passado). Default: todas.
+  const series = categoriasVisiveis
+    ? TODAS_SERIES.filter(s => categoriasVisiveis.has(s.key as CategoriaRebanho))
+    : TODAS_SERIES
+
+  // Se o usuário desligou todas as categorias, força VL+VS pra não ficar gráfico vazio.
+  const seriesEfetivo = series.length > 0
+    ? series
+    : TODAS_SERIES.filter(s => s.key === 'vacasLactacao' || s.key === 'vacasSecas')
 
   const maxV =
     Math.max(
       1,
-      ...meses12.flatMap(m => series.map(s => Number(m[s.key as keyof typeof m] ?? 0))),
+      ...meses.flatMap(m => seriesEfetivo.map(s => Number(m[s.key as keyof typeof m] ?? 0))),
     ) * 1.12
 
   // Eixo Y + grid
@@ -120,13 +141,17 @@ export async function exportarRelatorioPDF({ fazenda, projecao }: ExportParams):
   }
 
   const plotW = chartW - labelGutter
-  const colW = plotW / 12
+  const colW = plotW / nMeses
   const barGroupW = colW * 0.78
-  const barW = barGroupW / series.length
+  const barW = barGroupW / seriesEfetivo.length
 
-  meses12.forEach((m, i) => {
+  // Pula labels de mês quando há muitos meses (evita amassar)
+  const labelStep = nMeses <= 12 ? 1 : nMeses <= 24 ? 2 : nMeses <= 48 ? 3 : 6
+  const labelFont = nMeses <= 12 ? 7 : nMeses <= 24 ? 6 : 5
+
+  meses.forEach((m, i) => {
     const cx = chartX + labelGutter + i * colW + colW / 2
-    series.forEach((s, si) => {
+    seriesEfetivo.forEach((s, si) => {
       const val = Number(m[s.key as keyof typeof m] ?? 0)
       const bH = val > 0 ? Math.max(0.4, (val / maxV) * chartH) : 0
       const bx = cx - barGroupW / 2 + si * barW
@@ -135,22 +160,24 @@ export async function exportarRelatorioPDF({ fazenda, projecao }: ExportParams):
       doc.setFillColor(r, g, b)
       doc.rect(bx, by, barW * 0.9, bH, 'F')
 
-      if (val > 0 && barW >= 3.5) {
+      if (val > 0 && barW >= 3.5 && nMeses <= 12) {
         doc.setFontSize(5)
         doc.setTextColor(r, g, b)
         doc.text(String(Math.round(val)), bx + (barW * 0.9) / 2, by - 0.5, { align: 'center' })
       }
     })
-    doc.setFontSize(7)
-    doc.setTextColor(80, 80, 80)
-    doc.text(fmtMes(m.mes), cx, chartY + chartH + 4, { align: 'center' })
+    if (i % labelStep === 0) {
+      doc.setFontSize(labelFont)
+      doc.setTextColor(80, 80, 80)
+      doc.text(fmtMes(m.mes), cx, chartY + chartH + 4, { align: 'center' })
+    }
   })
 
   // Legenda
   let lx = chartX + labelGutter
   const ly = chartY + chartH + 9
   doc.setFontSize(8)
-  series.forEach(s => {
+  seriesEfetivo.forEach(s => {
     const [r, g, b] = hexToRgb(s.color)
     doc.setFillColor(r, g, b)
     doc.rect(lx, ly - 2.5, 3, 3, 'F')
@@ -159,8 +186,8 @@ export async function exportarRelatorioPDF({ fazenda, projecao }: ExportParams):
     lx += doc.getTextWidth(s.label) + 14
   })
 
-  // ── Tabela mensal (12 meses) ───────────────────────────────────────────────
-  const tableData = meses12.map(m => [
+  // ── Tabela mensal (cobre o horizonte filtrado) ─────────────────────────────
+  const tableData = meses.map(m => [
     fmtMes(m.mes),
     Math.round(m.vacasLactacao),
     Math.round(m.vacasSecas),
@@ -175,8 +202,8 @@ export async function exportarRelatorioPDF({ fazenda, projecao }: ExportParams):
     head: [['Mês', 'N VL', 'N VS', 'Partos totais', 'Fêmeas nascidas', 'Descartes vacas', 'Mortes vacas']],
     body: tableData,
     theme: 'grid',
-    margin: { left: M, right: M },
-    styles: { fontSize: 8, cellPadding: 1.4, halign: 'center', valign: 'middle' },
+    margin: { left: M, right: M, bottom: 10 },
+    styles: { fontSize: nMeses <= 24 ? 8 : 7, cellPadding: nMeses <= 24 ? 1.4 : 1, halign: 'center', valign: 'middle' },
     headStyles: { fillColor: hexToRgb('#1A7F3C'), textColor: 255, fontStyle: 'bold', fontSize: 8 },
     columnStyles: {
       0: { halign: 'center', fontStyle: 'bold', cellWidth: 22 },

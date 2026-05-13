@@ -193,8 +193,8 @@ export const GLOSSARY = {
     curta: 'Média mensal de VL ÷ (VL + VS) no horizonte filtrado.',
   },
   KPI_PARTOS: {
-    nome: 'Taxa de parição',
-    curta: 'Total de partos (vacas + novilhas) ÷ média mensal de (VL + VS) no período filtrado. Em 12 meses equivale à taxa anual de parição (típico 70–100%).',
+    nome: 'Taxa de parição (anualizada)',
+    curta: 'Partos por vaca por ano: (Σ partos × 12) ÷ Σ(VL+VS) no período filtrado. Independente do horizonte (12m ou 24m dão o mesmo valor com rebanho estável). Típico 70–100%.',
   },
   KPI_MEDIA_VL: {
     nome: 'Média VL',
