@@ -21,20 +21,27 @@ create table if not exists public.profiles (
 
 alter table public.profiles enable row level security;
 
+-- Função helper SECURITY DEFINER pra checar se o user atual é admin
+-- (evita recursão infinita nas policies que dependem desse check).
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (select 1 from public.profiles where id = auth.uid() and perfil = 'admin');
+$$;
+
 -- Cada usuário vê apenas seu próprio perfil
 drop policy if exists "Técnico vê seu perfil" on public.profiles;
 create policy "Técnico vê seu perfil" on public.profiles
   for select using (auth.uid() = id);
 
--- Admin vê todos os perfis
+-- Admin vê todos os perfis (usa função SECURITY DEFINER pra não recursão)
 drop policy if exists "Admin vê todos os perfis" on public.profiles;
 create policy "Admin vê todos os perfis" on public.profiles
-  for select using (
-    exists (
-      select 1 from public.profiles p
-      where p.id = auth.uid() and p.perfil = 'admin'
-    )
-  );
+  for select using (public.is_admin());
 
 -- Usuário atualiza seu próprio perfil (nome). Não pode promover-se a admin
 -- (perfil bloqueado por trigger abaixo).
@@ -78,12 +85,7 @@ create policy "Técnico gerencia suas fazendas" on public.fazendas
 -- Admin vê todas as fazendas (read-only V1)
 drop policy if exists "Admin vê todas as fazendas" on public.fazendas;
 create policy "Admin vê todas as fazendas" on public.fazendas
-  for select using (
-    exists (
-      select 1 from public.profiles p
-      where p.id = auth.uid() and p.perfil = 'admin'
-    )
-  );
+  for select using (public.is_admin());
 
 
 -- ─── 3. DADOS DO REBANHO ──────────────────────────────────────────────────
@@ -123,12 +125,7 @@ create policy "Técnico acessa dados de suas fazendas" on public.dados_rebanho
 -- Admin vê todos os dados
 drop policy if exists "Admin vê todos os dados" on public.dados_rebanho;
 create policy "Admin vê todos os dados" on public.dados_rebanho
-  for select using (
-    exists (
-      select 1 from public.profiles p
-      where p.id = auth.uid() and p.perfil = 'admin'
-    )
-  );
+  for select using (public.is_admin());
 
 
 -- ─── 4. TRIGGER: criar profile automaticamente após signup ────────────────
@@ -162,10 +159,7 @@ returns trigger language plpgsql security definer as $$
 begin
   if new.perfil is distinct from old.perfil then
     -- Permite se quem está fazendo é admin OU se foi feito via trigger/SQL direto
-    if not exists (
-      select 1 from public.profiles
-      where id = auth.uid() and perfil = 'admin'
-    ) and auth.uid() is not null then
+    if not public.is_admin() and auth.uid() is not null then
       raise exception 'Apenas admin pode alterar o campo perfil';
     end if;
   end if;
@@ -197,6 +191,16 @@ drop trigger if exists dados_rebanho_bump on public.dados_rebanho;
 create trigger dados_rebanho_bump
   before update on public.dados_rebanho
   for each row execute function public.bump_atualizado_em();
+
+
+-- ─── 7. GRANTS — direito básico pro role `authenticated` ─────────────────
+-- Sem grants, mesmo com RLS, Supabase retorna 403 (permission denied).
+-- RLS define QUE linhas o usuário vê; o grant dá o direito de acessar a tabela.
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on public.profiles to authenticated;
+grant select, insert, update, delete on public.fazendas to authenticated;
+grant select, insert, update, delete on public.dados_rebanho to authenticated;
+grant execute on function public.is_admin() to authenticated;
 
 
 -- ─── PRONTO ───────────────────────────────────────────────────────────────

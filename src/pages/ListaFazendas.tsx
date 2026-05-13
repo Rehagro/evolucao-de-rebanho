@@ -7,6 +7,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { RehagroLogo } from '@/components/ui/RehagroLogo'
 import { getFazendas, saveFazenda, deleteFazenda, duplicateFazenda } from '@/lib/storage'
+import { extrairMensagemErro } from '@/lib/supabase'
 import { DEFAULT_PARAMETROS, DEFAULT_ESTADO_ATUAL } from '@/lib/defaults'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
@@ -58,7 +59,7 @@ export function ListaFazendas({ onAbrir }: Props) {
       const lista = await getFazendas()
       setFazendas(lista)
     } catch (e) {
-      setErroGeral(e instanceof Error ? e.message : String(e))
+      setErroGeral(extrairMensagemErro(e))
     }
   }
 
@@ -76,7 +77,7 @@ export function ListaFazendas({ onAbrir }: Props) {
       })
       .catch(e => {
         if (!alive) return
-        setErroGeral(e instanceof Error ? e.message : String(e))
+        setErroGeral(extrairMensagemErro(e))
       })
       .finally(() => {
         if (alive) setCarregando(false)
@@ -99,7 +100,7 @@ export function ListaFazendas({ onAbrir }: Props) {
       await saveFazenda({ ...f, logoBase64: base64 })
       await recarregar()
     } catch (e) {
-      setLogoError(e instanceof Error ? e.message : 'Não foi possível ler a imagem.')
+      setLogoError(extrairMensagemErro(e))
     }
   }
 
@@ -108,7 +109,7 @@ export function ListaFazendas({ onAbrir }: Props) {
       await saveFazenda({ ...f, logoBase64: null })
       await recarregar()
     } catch (e) {
-      setErroGeral(e instanceof Error ? e.message : String(e))
+      setErroGeral(extrairMensagemErro(e))
     }
   }
 
@@ -133,7 +134,7 @@ export function ListaFazendas({ onAbrir }: Props) {
       await recarregar()
       onAbrir(nova.id)
     } catch (e) {
-      setErroGeral(e instanceof Error ? e.message : String(e))
+      setErroGeral(extrairMensagemErro(e))
     }
   }
 
@@ -145,7 +146,7 @@ export function ListaFazendas({ onAbrir }: Props) {
       setNomeInput('')
       await recarregar()
     } catch (e) {
-      setErroGeral(e instanceof Error ? e.message : String(e))
+      setErroGeral(extrairMensagemErro(e))
     }
   }
 
@@ -155,7 +156,7 @@ export function ListaFazendas({ onAbrir }: Props) {
       await duplicateFazenda(f.id)
       await recarregar()
     } catch (e) {
-      setErroGeral(e instanceof Error ? e.message : String(e))
+      setErroGeral(extrairMensagemErro(e))
     }
   }
 
@@ -165,7 +166,7 @@ export function ListaFazendas({ onAbrir }: Props) {
       setConfirmDelete(null)
       await recarregar()
     } catch (e) {
-      setErroGeral(e instanceof Error ? e.message : String(e))
+      setErroGeral(extrairMensagemErro(e))
     }
   }
 

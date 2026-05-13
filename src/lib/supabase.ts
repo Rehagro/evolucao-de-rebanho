@@ -20,6 +20,30 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 })
 
+/**
+ * Extrai mensagem legível de qualquer erro (Error nativo, PostgrestError do Supabase,
+ * objeto cru, etc). Evita "[object Object]" no UI.
+ */
+export function extrairMensagemErro(e: unknown): string {
+  if (!e) return 'Erro desconhecido'
+  if (typeof e === 'string') return e
+  if (e instanceof Error) return e.message
+  if (typeof e === 'object') {
+    const obj = e as { message?: string; error?: string; error_description?: string; details?: string; hint?: string; code?: string }
+    if (obj.message) {
+      const partes = [obj.message]
+      if (obj.details) partes.push(`(${obj.details})`)
+      if (obj.hint) partes.push(`— ${obj.hint}`)
+      if (obj.code) partes.push(`[${obj.code}]`)
+      return partes.join(' ')
+    }
+    if (obj.error_description) return obj.error_description
+    if (obj.error) return obj.error
+    try { return JSON.stringify(e) } catch { return String(e) }
+  }
+  return String(e)
+}
+
 export type Profile = {
   id: string
   nome: string
