@@ -106,7 +106,11 @@ export function GraficoRebanho({ projecao, params, hz, setHz, discOvr, setDiscOv
     [meses, visOrd],
   )
 
-  const hzOptions = ([12, 24, 36, 48, 60, 84] as const).filter(h => h <= projecao.meses.length)
+  // Sempre mostra todos os 6 botões. Ao clicar um maior que a projeção atual,
+  // DashboardFazenda recalcula via Math.max(horizonteMeses, hz). Antes filtrávamos
+  // por projecao.meses.length, mas isso criava um catch-22: a projeção tem 24 meses
+  // pelo default, então só 12 e 24 apareciam, e o usuário não conseguia destravar.
+  const hzOptions = [12, 24, 36, 48, 60, 84] as const
 
   const stripeBg = (i: number) =>
     i % 2 === 0 ? 'bg-surface' : 'bg-surface-2/40'
