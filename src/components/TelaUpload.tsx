@@ -42,12 +42,20 @@ function lerArquivoComoTexto(file: File): Promise<string> {
 
 function detectarTipo(nome: string, conteudo: string): CSVTipo | null {
   const n = nome.toLowerCase()
+  // Conteúdo também em lower pra match case-insensitive (Ideagri varia maiúsculas)
+  const c = conteudo.toLowerCase()
+
+  // 1) Tenta pelo NOME do arquivo
   if (n.includes('secag')) return 'secagem'
   if (n.includes('agenda') || n.includes('parto')) return 'agenda'
-  if (n.includes('crescimento') || n.includes('jovem') || n.includes('animal')) return 'crescimento'
-  if (conteudo.includes('Dt. sec. prev.')) return 'secagem'
-  if (conteudo.includes('Parto previsto') || conteudo.includes('Parto simples')) return 'agenda'
-  if (conteudo.includes('Idade (dias)')) return 'crescimento'
+  // 'anima' pega "animal", "animais" (plural — mais comum nos nomes do Ideagri)
+  if (n.includes('crescimento') || n.includes('jovem') || n.includes('anima')) return 'crescimento'
+
+  // 2) Fallback pelo CONTEÚDO do CSV
+  if (c.includes('dt. sec. prev.') || c.includes('sit. rep.')) return 'secagem'
+  if (c.includes('parto previsto') || c.includes('parto simples')) return 'agenda'
+  if (c.includes('idade (dias)') || c.includes('idade(dias)')) return 'crescimento'
+
   return null
 }
 
