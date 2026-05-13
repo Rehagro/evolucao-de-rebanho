@@ -121,7 +121,27 @@ export function preverLiberacaoNovilhas(
 ): number[] {
   const partosReaisMap = indexarPartosReais(rebanho)
   const dataRef = rebanho.dataReferencia
-  const coortes = construirCoortesIniciais(estado, params.idadeAoParto, partosReaisMap, dataRef)
+  const coortes = construirCoortesIniciais(estado, params.idadeAoParto, partosReaisMap, dataRef, rebanho)
+
+  // Adicionar overdue (animais já ≥ idadeLib) split 50/50 nos slots idadeLib-2 e idadeLib-3.
+  // Só faz sentido quando temos dados individuais do CSV (com aggregate uniforme não há overdue).
+  if (rebanho.animaisCrescimento?.length) {
+    let overdue = 0
+    for (const a of rebanho.animaisCrescimento) {
+      if (a.categoria === 'Novilha') continue
+      const idadeM = Math.floor(a.idadeDias / 30)
+      if (idadeM >= params.idadeLiberacao) overdue++
+    }
+    if (overdue > 0) {
+      const idx2 = Math.max(0, params.idadeLiberacao - 2)
+      const idx3 = Math.max(0, params.idadeLiberacao - 3)
+      const batch1 = Math.ceil(overdue / 2)
+      const batch2 = overdue - batch1
+      coortes[idx2] += batch1
+      coortes[idx3] += batch2
+    }
+  }
+
   const previsao: number[] = []
   const sim = [...coortes]
   const size = sim.length
@@ -152,24 +172,48 @@ function construirCoortesIniciais(
   idadeAoParto: number,
   partosReaisMap: Map<string, { vacas: number; novilhas: number }>,
   dataReferencia: Date,
+  rebanho?: RebanhoAtual | null,
 ): number[] {
   // Replica planilha (linhas 34-69 da aba Evolução Rebanho — coluna B "Valor inicial"):
-  //   B34-B39 (1m-6m):    Param!A53 / 6                = bezerras<180d / 6
-  //   B40-B47 (7m-14m):   Param!A54 / 8                = bez_180d_até_aptas / 8
+  //   B34-B39 (1m-6m):    Param!A53 / 6                = bezerras<180d / 6  (uniforme)
+  //   B40-B47 (7m-14m):   Param!A54 / 8                = bez_180d_até_aptas / 8  (uniforme)
   //   B48-B51 (15m-18m):  SUM(A45:A48) / 4             = (aptas+atrasadas+insLt25+insGt25)/4
   //   B52-B61 (19m-28m):  partos novilha previstos meses 10..1 (futuro→passado da agenda)
+  //
+  // MELHORIA vs planilha: quando o CSV "em crescimento" tem dados individuais,
+  // distribuímos os animais nas coortes pela idade REAL (não uniforme). Isso faz
+  // a previsão de liberação refletir o histograma de idades efetivo. A planilha
+  // não consegue fazer isso porque trabalha só com aggregates A53/A54.
+  // Convenção: coortes[i] = animais com "i+1 meses de idade" = idadeDias 30·(i+1)..30·(i+2)-1.
   const size = COORTE_SIZE(idadeAoParto)
   const coortes = new Array<number>(size).fill(0)
 
-  // 1m-6m
-  for (let i = 0; i < 6; i++) {
-    coortes[i] = estado.bezerrasMenores180d / 6
+  const temCsv = !!(rebanho?.animaisCrescimento?.length)
+
+  if (temCsv) {
+    // 1m-14m derivados do CSV individual (idade em meses = floor(idadeDias / 30)).
+    // Pula categoria "Novilha" (essas já estão em A45-A48 = repro).
+    for (const a of rebanho!.animaisCrescimento) {
+      if (a.categoria === 'Novilha') continue
+      const idadeM = Math.floor(a.idadeDias / 30)
+      const idx = idadeM - 1
+      // Cabe em 1m..14m (coortes[0..13]). Newborns (< 30d, idadeM=0) entram em coortes[0].
+      // Animais ≥ idadeLib são tratados como overdue pelo CALLER (preverLiberacaoNovilhas).
+      // Aqui só armazenamos no slot natural; o calcularProjecao não usa overdue (mantém comportamento planilha).
+      if (idx < 0) {
+        coortes[0]++  // newborn → 1m bucket
+      } else if (idx < 14) {
+        coortes[idx]++
+      }
+      // idx >= 14: animal ≥15m em crescimento — caso raro, ignorado (planilha 15m+ = repro)
+    }
+  } else {
+    // Fallback planilha (uniforme)
+    for (let i = 0; i < 6; i++) coortes[i] = estado.bezerrasMenores180d / 6
+    for (let i = 6; i < 14; i++) coortes[i] = estado.bezerrasNovilhas180dAteAptas / 8
   }
-  // 7m-14m
-  for (let i = 6; i < 14; i++) {
-    coortes[i] = estado.bezerrasNovilhas180dAteAptas / 8
-  }
-  // 15m-18m
+
+  // 15m-18m: SEMPRE da planilha (repro novilhas), independente do CSV
   const totalRepro = estado.novilhasVaziasAptas + estado.novilhasAtrasadas
     + estado.novilhasInseminadas_lt25 + estado.novilhasInseminadas_gt25
   for (let i = 14; i < 18; i++) {
@@ -216,7 +260,7 @@ export function calcularProjecao(
   const partosReaisMap = rebanho ? indexarPartosReais(rebanho) : new Map<string, { vacas: number; novilhas: number }>()
   const secagensReaisMap = rebanho ? calcularSecagensPorMes(rebanho, params) : new Map<string, { rotina: number; producao: number }>()
 
-  let coortes = construirCoortesIniciais(estado, params.idadeAoParto, partosReaisMap, dataReferencia)
+  let coortes = construirCoortesIniciais(estado, params.idadeAoParto, partosReaisMap, dataReferencia, rebanho)
 
   // Estado reprodutivo atual
   let vacasLactacao = estado.vacasLactacao
