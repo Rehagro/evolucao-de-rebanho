@@ -74,21 +74,42 @@ export function GraficoCenarioMini({ projecao, horizonte, categorias, tall = fal
     })
   }, [projecao, horizonte, modo])
 
+  // Cresce colW conforme aumenta horizonte pra dar respiro entre meses.
+  // O wrapper tem overflow-x-auto, então scroll horizontal cobre a largura extra.
   const colW = (() => {
     if (modo === 'anual') {
       return tall ? 220 : 160
     }
-    return tall
-      ? (horizonte <= 12 ? 120 : horizonte <= 24 ? 92 : horizonte <= 36 ? 68 : 54)
-      : (horizonte <= 12 ?  64 : horizonte <= 24 ? 48 : horizonte <= 36 ? 36 : 28)
+    if (tall) {
+      if (horizonte <= 12) return 120
+      if (horizonte <= 24) return 92
+      if (horizonte <= 36) return 76
+      if (horizonte <= 48) return 68
+      if (horizonte <= 60) return 62
+      return 56    // 84m
+    }
+    if (horizonte <= 12) return 72
+    if (horizonte <= 24) return 56
+    if (horizonte <= 36) return 50
+    if (horizonte <= 48) return 48
+    if (horizonte <= 60) return 46
+    return 44      // 84m
   })()
-  const BMAX = modo === 'anual' ? (tall ? 80 : 48) : (tall ? 44 : 20)
+  const BMAX = modo === 'anual' ? (tall ? 80 : 48) : (tall ? 44 : 18)
   const BGAP = modo === 'anual' ? 8 : 2
   const CH = tall ? 480 : 200
 
+  // Em horizontes longos, mostrar label de mês a cada N pra não encavalar
+  const labelStep = modo === 'anual'
+    ? 1
+    : (horizonte <= 12 ? 1 : horizonte <= 24 ? 2 : horizonte <= 36 ? 3 : horizonte <= 60 ? 4 : 6)
+
+  // bar min 4px (era 6) pra garantir que 5 cats cabem em colW de horizontes longos.
+  // Antes, 5 bars × 6px + 4 gaps × 2px = 38px > colW (28px em 84m) → bezerras
+  // desenhava fora da coluna e ficava sob outras barras (bug visto).
   const bW = Math.min(BMAX, visOrd.length > 0
-    ? Math.max(6, Math.floor((colW - 6 - (visOrd.length - 1) * BGAP) / visOrd.length))
-    : colW - 6)
+    ? Math.max(4, Math.floor((colW - 4 - (visOrd.length - 1) * BGAP) / visOrd.length))
+    : colW - 4)
 
   // Headroom de 12% para os rótulos acima das barras caberem sem colar no topo.
   const maxV = useMemo(
@@ -116,16 +137,16 @@ export function GraficoCenarioMini({ projecao, horizonte, categorias, tall = fal
 
         {/* Conteúdo */}
         <div className="flex-1" style={{ minWidth: colW * colunas.length }}>
-          {/* Headers (meses ou anos) */}
+          {/* Headers (meses ou anos) — em horizontes longos, mostra label a cada labelStep */}
           <div className="flex h-7 border-b border-line">
             {colunas.map((c, i) => (
               <div
                 key={i}
                 className="shrink-0 flex items-center justify-center text-[10px] font-semibold text-ink-3 font-mono"
                 style={{ width: colW }}
-                title={c.anoParcial ? 'Ano parcial (menos de 12 meses no filtro)' : undefined}
+                title={c.anoParcial ? 'Ano parcial (menos de 12 meses no filtro)' : c.label}
               >
-                {c.label}
+                {i % labelStep === 0 ? c.label : ''}
               </div>
             ))}
           </div>
