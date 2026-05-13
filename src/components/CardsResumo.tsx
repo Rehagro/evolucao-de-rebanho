@@ -49,9 +49,9 @@ export function CardsResumo({ projecao, hz }: Props) {
         color="var(--color-data-vl)"
       />
       <KPI
-        label={<InfoTooltip term="KPI_PARTOS" placement="bottom">Partos totais / Vacas</InfoTooltip>}
-        value={pctStr(k.razaoPartosTotalSobreVacas)}
-        sub={`${num(k.partosTotal)} totais · ${num(k.partosVacas)} vacas`}
+        label={<InfoTooltip term="KPI_PARTOS" placement="bottom">Partos / Vacas</InfoTooltip>}
+        value={pctStr(k.taxaParicao)}
+        sub={`${num(k.partosTotal)} partos · ${n}m`}
         color="var(--color-kpi-partos)"
       />
       <KPI

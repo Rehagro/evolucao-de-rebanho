@@ -14,8 +14,8 @@ export interface KpisDashboard {
   partosTotal: number
   partosVacas: number
   partosNovilhas: number
-  /** partosTotal / partosVacas (0..N, tipicamente >1). 0 quando não há partos de vacas. */
-  razaoPartosTotalSobreVacas: number
+  /** Taxa de parição no período: Σ partos / mean(VL+VS) (0–1, %). */
+  taxaParicao: number
   /** (VL + VS) / rebanho total no último mês (0–1). */
   vacasSobreRebanho: number
   /** Último mês do horizonte (data). */
@@ -38,7 +38,7 @@ export function calcularKpisDashboard(meses: MesProjetado[]): KpisDashboard {
       partosTotal: 0,
       partosVacas: 0,
       partosNovilhas: 0,
-      razaoPartosTotalSobreVacas: 0,
+      taxaParicao: 0,
       vacasSobreRebanho: 0,
       mesFim: null,
       mesInicio: null,
@@ -54,7 +54,13 @@ export function calcularKpisDashboard(meses: MesProjetado[]): KpisDashboard {
   const partosVacas = meses.reduce((s, m) => s + m.partosVacas, 0)
   const partosNovilhas = meses.reduce((s, m) => s + m.partosNovilhas, 0)
   const partosTotal = partosVacas + partosNovilhas
-  const razaoPartosTotalSobreVacas = partosVacas > 0 ? partosTotal / partosVacas : 0
+
+  // Taxa de parição = Σ partos / mean(VL+VS) no período filtrado.
+  // Em 12m com rebanho estável, equivale à "taxa anual de parição" (típico 70–100%).
+  // Em 24m, deve dar ~150–200% (cada vaca pare ~1.5 vezes em 2 anos).
+  const totalVacasMensal = meses.reduce((s, m) => s + m.vacasLactacao + m.vacasSecas, 0)
+  const mediaVacas = totalVacasMensal / meses.length
+  const taxaParicao = mediaVacas > 0 ? partosTotal / mediaVacas : 0
 
   const primeiro = meses[0]
   const ultimo = meses[meses.length - 1]
@@ -75,7 +81,7 @@ export function calcularKpisDashboard(meses: MesProjetado[]): KpisDashboard {
     partosTotal,
     partosVacas,
     partosNovilhas,
-    razaoPartosTotalSobreVacas,
+    taxaParicao,
     vacasSobreRebanho,
     mesFim: ultimo.mes,
     mesInicio: primeiro.mes,
