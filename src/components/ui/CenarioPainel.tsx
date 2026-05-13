@@ -4,7 +4,6 @@ import { Card, CardContent } from './Card'
 import { Button } from './Button'
 import { Modal } from './Modal'
 import { GraficoCenarioMini } from './GraficoCenarioMini'
-import { TabelaResumoAnual } from './TabelaResumoAnual'
 import type { Cenario, ResultadoProjecao } from '@/types'
 import type { CategoriaRebanho } from '@/lib/coresCategorias'
 
@@ -14,6 +13,7 @@ interface Props {
   projecao?: ResultadoProjecao | null
   horizonte: number
   categorias: Set<CategoriaRebanho>
+  modo?: 'mensal' | 'anual'
   onLimpar: () => void
 }
 
@@ -23,7 +23,7 @@ function fmtData(iso?: string): string {
   return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
-export function CenarioPainel({ slot, snapshot, projecao, horizonte, categorias, onLimpar }: Props) {
+export function CenarioPainel({ slot, snapshot, projecao, horizonte, categorias, modo = 'mensal', onLimpar }: Props) {
   const [fullscreenOpen, setFullscreenOpen] = useState(false)
   if (!snapshot) {
     return (
@@ -66,18 +66,12 @@ export function CenarioPainel({ slot, snapshot, projecao, horizonte, categorias,
       </div>
       <CardContent className="pt-4">
         {projecao ? (
-          <>
-            <GraficoCenarioMini
-              projecao={projecao}
-              horizonte={horizonte}
-              categorias={categorias}
-            />
-            <TabelaResumoAnual
-              projecao={projecao}
-              horizonte={horizonte}
-              categorias={categorias}
-            />
-          </>
+          <GraficoCenarioMini
+            projecao={projecao}
+            horizonte={horizonte}
+            categorias={categorias}
+            modo={modo}
+          />
         ) : (
           <p className="text-xs text-ink-4 text-center py-6">
             Projeção indisponível — snapshot pode ter sido salvo sem cálculo.
@@ -97,6 +91,7 @@ export function CenarioPainel({ slot, snapshot, projecao, horizonte, categorias,
           projecao={projecao}
           horizonte={horizonte}
           categorias={categorias}
+          modo={modo}
           tall
         />
       )}

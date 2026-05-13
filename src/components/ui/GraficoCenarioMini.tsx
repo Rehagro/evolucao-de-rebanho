@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { ResultadoProjecao } from '@/types'
+import type { MesProjetado, ResultadoProjecao } from '@/types'
 import { CORES_CATEGORIAS, LABELS_CATEGORIAS, ORDEM_CATEGORIAS, type CategoriaRebanho } from '@/lib/coresCategorias'
 
 const MESES_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
@@ -14,22 +14,76 @@ interface Props {
   horizonte: number
   categorias: Set<CategoriaRebanho>
   tall?: boolean
+  /** 'mensal' (default): 1 coluna por mês. 'anual': 1 coluna por ano com média mensal. */
+  modo?: 'mensal' | 'anual'
+}
+
+interface Coluna {
+  label: string
+  valores: Record<CategoriaRebanho, number>
+  pctVL: number
+  anoParcial: boolean
 }
 
 /**
  * Versão simplificada do gráfico de barras para a TelaCenarios.
  *
- * Mantém os rótulos de dados acima das barras (paridade com o Dashboard principal).
- * Sem inputs editáveis. Headroom no eixo Y de 12% para não colar no topo.
+ * Suporta dois modos:
+ * - mensal (default): 1 barra agrupada por mês, igual ao Dashboard.
+ * - anual: agrupa os meses do filtro por ano e mostra a MÉDIA mensal de cada
+ *   categoria como barra anual. Útil pra visão sintética de 1+ anos.
  */
-export function GraficoCenarioMini({ projecao, horizonte, categorias, tall = false }: Props) {
-  const meses = projecao.meses.slice(0, horizonte)
+export function GraficoCenarioMini({ projecao, horizonte, categorias, tall = false, modo = 'mensal' }: Props) {
   const visOrd = ORDEM_CATEGORIAS.filter(k => categorias.has(k))
-  const colW = tall
-    ? (horizonte <= 12 ? 120 : horizonte <= 24 ? 92 : horizonte <= 36 ? 68 : 54)
-    : (horizonte <= 12 ?  64 : horizonte <= 24 ? 48 : horizonte <= 36 ? 36 : 28)
-  const BMAX = tall ? 44 : 20
-  const BGAP = 2
+
+  const colunas = useMemo<Coluna[]>(() => {
+    const meses = projecao.meses.slice(0, horizonte)
+    if (modo === 'anual') {
+      const grupo = new Map<number, MesProjetado[]>()
+      for (const m of meses) {
+        const ano = new Date(m.mes).getFullYear()
+        if (!grupo.has(ano)) grupo.set(ano, [])
+        grupo.get(ano)!.push(m)
+      }
+      return Array.from(grupo.entries())
+        .sort((a, b) => a[0] - b[0])
+        .map(([ano, ms]) => {
+          const valores = {} as Record<CategoriaRebanho, number>
+          for (const k of ORDEM_CATEGORIAS) {
+            valores[k] = ms.reduce((s, m) => s + ((m[k] as number) || 0), 0) / ms.length
+          }
+          const pctVL = ms.reduce((s, m) => s + m.pctVL, 0) / ms.length
+          return {
+            label: String(ano) + (ms.length < 12 ? '*' : ''),
+            valores,
+            pctVL,
+            anoParcial: ms.length < 12,
+          }
+        })
+    }
+    // mensal
+    return meses.map(m => {
+      const valores = {} as Record<CategoriaRebanho, number>
+      for (const k of ORDEM_CATEGORIAS) valores[k] = (m[k] as number) || 0
+      return {
+        label: fmtMes(m.mes),
+        valores,
+        pctVL: m.pctVL,
+        anoParcial: false,
+      }
+    })
+  }, [projecao, horizonte, modo])
+
+  const colW = (() => {
+    if (modo === 'anual') {
+      return tall ? 220 : 160
+    }
+    return tall
+      ? (horizonte <= 12 ? 120 : horizonte <= 24 ? 92 : horizonte <= 36 ? 68 : 54)
+      : (horizonte <= 12 ?  64 : horizonte <= 24 ? 48 : horizonte <= 36 ? 36 : 28)
+  })()
+  const BMAX = modo === 'anual' ? (tall ? 80 : 48) : (tall ? 44 : 20)
+  const BGAP = modo === 'anual' ? 8 : 2
   const CH = tall ? 480 : 200
 
   const bW = Math.min(BMAX, visOrd.length > 0
@@ -38,11 +92,11 @@ export function GraficoCenarioMini({ projecao, horizonte, categorias, tall = fal
 
   // Headroom de 12% para os rótulos acima das barras caberem sem colar no topo.
   const maxV = useMemo(
-    () => Math.max(1, ...meses.flatMap(m => visOrd.map(k => (m[k] as number) || 0))) * 1.12,
-    [meses, visOrd],
+    () => Math.max(1, ...colunas.flatMap(c => visOrd.map(k => c.valores[k] || 0))) * 1.12,
+    [colunas, visOrd],
   )
 
-  const totalW = colW * meses.length + 50
+  const totalW = colW * colunas.length + 50
 
   return (
     <div className="overflow-x-auto">
@@ -61,16 +115,17 @@ export function GraficoCenarioMini({ projecao, horizonte, categorias, tall = fal
         </div>
 
         {/* Conteúdo */}
-        <div className="flex-1" style={{ minWidth: colW * meses.length }}>
-          {/* Headers de meses */}
+        <div className="flex-1" style={{ minWidth: colW * colunas.length }}>
+          {/* Headers (meses ou anos) */}
           <div className="flex h-7 border-b border-line">
-            {meses.map((m, i) => (
+            {colunas.map((c, i) => (
               <div
                 key={i}
                 className="shrink-0 flex items-center justify-center text-[10px] font-semibold text-ink-3 font-mono"
                 style={{ width: colW }}
+                title={c.anoParcial ? 'Ano parcial (menos de 12 meses no filtro)' : undefined}
               >
-                {fmtMes(m.mes)}
+                {c.label}
               </div>
             ))}
           </div>
@@ -84,17 +139,18 @@ export function GraficoCenarioMini({ projecao, horizonte, categorias, tall = fal
                 style={{ top: `${(1 - p) * 100}%` }}
               />
             ))}
-            {meses.map((m, i) => (
+            {colunas.map((c, i) => (
               <div
                 key={i}
                 className="shrink-0 flex items-end justify-center px-0.5 relative z-[1]"
                 style={{ width: colW, height: CH, gap: BGAP }}
               >
                 {visOrd.map(k => {
-                  const val = (m[k] as number) || 0
+                  const val = c.valores[k] || 0
                   const bH = val > 0 ? Math.max(2, (val / maxV) * CH) : 0
                   const cor = CORES_CATEGORIAS[k]
-                  const lblOk = val > 0 && bW >= 6
+                  // Em modo anual sempre exibe rótulo (espaço sobra)
+                  const lblOk = val > 0 && (modo === 'anual' || bW >= 6)
                   return (
                     <div
                       key={k}
@@ -105,12 +161,12 @@ export function GraficoCenarioMini({ projecao, horizonte, categorias, tall = fal
                         <div
                           className="font-bold leading-tight overflow-hidden font-mono tabular-nums"
                           style={{
-                            fontSize: bW >= 14 ? 10 : 9,
+                            fontSize: modo === 'anual' ? 11 : bW >= 14 ? 10 : 9,
                             color: cor,
                             marginBottom: 1,
-                            writingMode: bW < 11 ? 'vertical-rl' : 'horizontal-tb',
-                            transform: bW < 11 ? 'rotate(180deg)' : 'none',
-                            maxHeight: bW < 11 ? 30 : 'auto',
+                            writingMode: bW < 11 && modo !== 'anual' ? 'vertical-rl' : 'horizontal-tb',
+                            transform: bW < 11 && modo !== 'anual' ? 'rotate(180deg)' : 'none',
+                            maxHeight: bW < 11 && modo !== 'anual' ? 30 : 'auto',
                           }}
                           title={`${LABELS_CATEGORIAS[k]}: ${Math.round(val)}`}
                         >
@@ -143,13 +199,13 @@ export function GraficoCenarioMini({ projecao, horizonte, categorias, tall = fal
               borderBottomColor: 'var(--color-brand-soft)',
             }}
           >
-            {meses.map((m, i) => (
+            {colunas.map((c, i) => (
               <div
                 key={i}
                 className="shrink-0 flex items-center justify-center text-[9px] font-semibold text-brand font-mono tabular-nums"
                 style={{ width: colW }}
               >
-                {(m.pctVL * 100).toFixed(0)}%
+                {(c.pctVL * 100).toFixed(0)}%
               </div>
             ))}
           </div>

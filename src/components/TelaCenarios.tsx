@@ -32,6 +32,7 @@ function projetar(snapshot: Cenario, fazenda: Fazenda): ResultadoProjecao | null
 
 export function TelaCenarios({ fazenda, onSalvar }: Props) {
   const [horizonte, setHorizonte] = useState<12 | 24 | 36>(24)
+  const [modo, setModo] = useState<'mensal' | 'anual'>('mensal')
   const [categorias, setCategorias] = useState<Set<CategoriaRebanho>>(
     new Set(ORDEM_CATEGORIAS),
   )
@@ -118,6 +119,15 @@ export function TelaCenarios({ fazenda, onSalvar }: Props) {
             ]}
             size="sm"
           />
+          <Seg
+            value={modo}
+            onChange={v => setModo(v)}
+            options={[
+              { value: 'mensal', label: 'Mensal' },
+              { value: 'anual',  label: 'Anual'  },
+            ]}
+            size="sm"
+          />
           <div className="flex items-center gap-1.5 flex-wrap">
             {ORDEM_CATEGORIAS.map(k => {
               const on = categorias.has(k)
@@ -151,14 +161,15 @@ export function TelaCenarios({ fazenda, onSalvar }: Props) {
         )}
       </div>
 
-      {/* Painéis empilhados (A em cima, B embaixo) para comparação mês a mês */}
-      <div className="grid grid-cols-1 gap-4">
+      {/* Painéis empilhados (A em cima, B embaixo) com gap pequeno pra comparação mês a mês */}
+      <div className="grid grid-cols-1 gap-2">
         <CenarioPainel
           slot="A"
           snapshot={fazenda.cenarioA}
           projecao={projecaoA}
           horizonte={horizonte}
           categorias={categorias}
+          modo={modo}
           onLimpar={() => setConfirmacao({ tipo: 'limpar', slot: 'A' })}
         />
         <CenarioPainel
@@ -167,6 +178,7 @@ export function TelaCenarios({ fazenda, onSalvar }: Props) {
           projecao={projecaoB}
           horizonte={horizonte}
           categorias={categorias}
+          modo={modo}
           onLimpar={() => setConfirmacao({ tipo: 'limpar', slot: 'B' })}
         />
       </div>
