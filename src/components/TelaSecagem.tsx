@@ -54,7 +54,8 @@ export function TelaSecagem({ fazenda, projecao }: Props) {
     })
   }, [fazenda])
 
-  const resumoMensal = projecao?.meses.slice(0, 24) ?? []
+  // Usa todos os meses calculados pelo motor (suporta até 84 meses).
+  const resumoMensal = projecao?.meses ?? []
 
   return (
     <div className="space-y-6">

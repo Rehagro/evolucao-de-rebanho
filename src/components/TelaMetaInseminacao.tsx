@@ -22,7 +22,9 @@ function fmtDec(n: number): string {
 }
 
 export function TelaMetaInseminacao({ projecao }: Props) {
-  const meses = projecao.meses.slice(0, 24)
+  // Usa todos os meses calculados pelo motor (= params.horizonteMeses,
+  // ampliado pelo hz do Dashboard via Math.max). Suporta até 84 meses.
+  const meses = projecao.meses
 
   return (
     <div className="space-y-6">

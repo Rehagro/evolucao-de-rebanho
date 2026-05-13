@@ -15,7 +15,8 @@ function nomeMes(d: Date | string): string {
 }
 
 export function TelaForragem({ projecao, fazenda: _f }: Props) {
-  const meses = projecao.meses.slice(0, 24)
+  // Usa todos os meses calculados pelo motor (suporta até 84 meses).
+  const meses = projecao.meses
 
   return (
     <div className="space-y-4">
