@@ -8,20 +8,28 @@ import { CenarioPainel } from './ui/CenarioPainel'
 import { calcularProjecao } from '@/engine/projecao'
 import { clearCenario, promoverBparaA, getFazenda } from '@/lib/storage'
 import { CORES_CATEGORIAS, LABELS_CATEGORIAS, ORDEM_CATEGORIAS, type CategoriaRebanho } from '@/lib/coresCategorias'
-import type { Fazenda, Cenario, ResultadoProjecao } from '@/types'
+import type { Fazenda, Cenario, ResultadoProjecao, Parametros } from '@/types'
+
+type Horizonte = 12 | 24 | 36 | 48 | 60 | 84
 
 interface Props {
   fazenda: Fazenda
   onSalvar: (f: Fazenda) => void
 }
 
-function projetar(snapshot: Cenario, fazenda: Fazenda): ResultadoProjecao | null {
-  if (snapshot.projecao) return snapshot.projecao
+function projetar(snapshot: Cenario, fazenda: Fazenda, horizonteMinimo: number): ResultadoProjecao | null {
+  // Cache vale se cobrir o horizonte filtrado.
+  if (snapshot.projecao && snapshot.projecao.meses.length >= horizonteMinimo) {
+    return snapshot.projecao
+  }
   if (!snapshot.estadoAtual) return null
   if (snapshot.estadoAtual.vacasLactacao === 0) return null
   const dataRef = fazenda.dataUltimoUpload ? new Date(fazenda.dataUltimoUpload) : new Date()
+  // Cache não cobre — recalcula com horizonteMeses suficiente.
+  const horizonteAjustado = Math.max(snapshot.parametros.horizonteMeses, horizonteMinimo) as Parametros['horizonteMeses']
+  const params: Parametros = { ...snapshot.parametros, horizonteMeses: horizonteAjustado }
   return calcularProjecao(
-    snapshot.parametros,
+    params,
     snapshot.estadoAtual,
     fazenda.rebanhoAtual,
     dataRef,
@@ -31,7 +39,7 @@ function projetar(snapshot: Cenario, fazenda: Fazenda): ResultadoProjecao | null
 }
 
 export function TelaCenarios({ fazenda, onSalvar }: Props) {
-  const [horizonte, setHorizonte] = useState<12 | 24 | 36>(24)
+  const [horizonte, setHorizonte] = useState<Horizonte>(24)
   const [modo, setModo] = useState<'mensal' | 'anual'>('mensal')
   const [categorias, setCategorias] = useState<Set<CategoriaRebanho>>(
     new Set(ORDEM_CATEGORIAS),
@@ -39,12 +47,12 @@ export function TelaCenarios({ fazenda, onSalvar }: Props) {
   const [confirmacao, setConfirmacao] = useState<null | { tipo: 'limpar'; slot: 'A' | 'B' } | { tipo: 'promover' }>(null)
 
   const projecaoA = useMemo(
-    () => fazenda.cenarioA ? projetar(fazenda.cenarioA, fazenda) : null,
-    [fazenda.cenarioA, fazenda.rebanhoAtual, fazenda.dataUltimoUpload],
+    () => fazenda.cenarioA ? projetar(fazenda.cenarioA, fazenda, horizonte) : null,
+    [fazenda.cenarioA, fazenda.rebanhoAtual, fazenda.dataUltimoUpload, horizonte],
   )
   const projecaoB = useMemo(
-    () => fazenda.cenarioB ? projetar(fazenda.cenarioB, fazenda) : null,
-    [fazenda.cenarioB, fazenda.rebanhoAtual, fazenda.dataUltimoUpload],
+    () => fazenda.cenarioB ? projetar(fazenda.cenarioB, fazenda, horizonte) : null,
+    [fazenda.cenarioB, fazenda.rebanhoAtual, fazenda.dataUltimoUpload, horizonte],
   )
 
   const semCenarios = !fazenda.cenarioA && !fazenda.cenarioB
@@ -116,6 +124,9 @@ export function TelaCenarios({ fazenda, onSalvar }: Props) {
               { value: 12, label: '12m' },
               { value: 24, label: '24m' },
               { value: 36, label: '36m' },
+              { value: 48, label: '48m' },
+              { value: 60, label: '60m' },
+              { value: 84, label: '84m' },
             ]}
             size="sm"
           />
