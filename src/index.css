@@ -1,0 +1,136 @@
+@import "tailwindcss";
+
+@theme inline {
+  /* ─── Brand (Rehagro) ──────────────────────────────────────────── */
+  --color-brand:        #1A7F3C;
+  --color-brand-2:      #14682F;
+  --color-brand-3:      #0E5224;
+  --color-brand-soft:   #C9DEC6;
+  --color-brand-tint:   #DDE9D5;
+  --color-brand-tint-2: #E8EFE0;
+
+  /* ─── Surfaces (cream) ─────────────────────────────────────────── */
+  --color-bg:           #EFE9DA;
+  --color-bg-elev:      #F2ECDE;
+  --color-surface:      #F8F4E8;
+  --color-surface-2:    #ECE5D2;
+  --color-surface-inset:#E2DAC2;
+  --color-surface-pure: #FBF8EE;
+
+  /* ─── Sidebar (dark) ───────────────────────────────────────────── */
+  --color-side-bg:      #1F2A23;
+  --color-side-bg-2:    #283530;
+  --color-side-ink:     #E8E2D0;
+  --color-side-ink-2:   #B8B0A0;
+  --color-side-ink-3:   #8A8474;
+  --color-side-line:    #34403A;
+
+  /* ─── Ink (texto no cream) ─────────────────────────────────────── */
+  --color-ink:          #1B2620;
+  --color-ink-2:        #364039;
+  --color-ink-3:        #6E7269;
+  --color-ink-4:        #93958A;
+  --color-ink-disabled: #B8B8AB;
+
+  /* ─── Status ───────────────────────────────────────────────────── */
+  --color-status-bad:   #B94834;
+  --color-status-warn:  #C77A2F;
+  --color-status-mid:   #DBB04A;
+  --color-status-ok:    #5B9F49;
+  --color-status-top:   #1A7F3C;
+
+  /* ─── Soft fills (pills/tags) ──────────────────────────────────── */
+  --color-top25:        #D7E5C8;
+  --color-top25-fg:     #2E6B25;
+  --color-median:       #EFE0BC;
+  --color-median-fg:    #8C6620;
+  --color-worsemed:     #F0D8B7;
+  --color-worsemed-fg:  #9A5520;
+  --color-inf25:        #ECC8B9;
+  --color-inf25-fg:     #8B3B27;
+
+  /* ─── Lines ────────────────────────────────────────────────────── */
+  --color-line:         #D8CFB5;
+  --color-line-2:       #C5BB9D;
+  --color-line-3:       #A89E7E;
+
+  /* ─── Categorias de dados (gráfico — Onda 2) ──────────────────── */
+  --color-data-vl:      #2D6BC8;
+  --color-data-vs:      #9CA09C;
+  --color-data-bez012:  #4FA85C;
+  --color-data-bez1223: #9E5AC8;
+  --color-data-novp:    #28A89A;
+
+  /* ─── KPIs do Dashboard (Onda 2) ───────────────────────────────── */
+  --color-kpi-pctvl:    #1A7F3C;
+  --color-kpi-partos:   #A864D4;
+  --color-kpi-rebanho:  #2D6BC8;
+  --color-kpi-cresc:    #5BA84F;
+
+  /* ─── Fontes ───────────────────────────────────────────────────── */
+  --font-sans:    "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Instrument Serif", "Plus Jakarta Sans", serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* ─── Raios ────────────────────────────────────────────────────── */
+  --radius-1: 4px;
+  --radius-2: 6px;
+  --radius-3: 8px;
+  --radius-4: 12px;
+
+  /* ─── Shadows ──────────────────────────────────────────────────── */
+  --shadow-1: 0 1px 0 rgba(27,38,32,0.04), 0 1px 2px rgba(27,38,32,0.04);
+  --shadow-2: 0 2px 8px rgba(27,38,32,0.06), 0 1px 2px rgba(27,38,32,0.05);
+}
+
+@layer base {
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-sans);
+    color: var(--color-ink);
+    background: var(--color-bg);
+    font-size: 15px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  #root { min-height: 100vh; }
+
+  /* Remove spinners de input number */
+  input[type=number] { -moz-appearance: textfield; }
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  /* Scrollbar discreto */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--color-line-2); border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-line-3); }
+}
+
+/* ─── Eyebrow (label decorativa) ────────────────────────────────── */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ink-3);
+  font-weight: 600;
+}
+.page-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-brand);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.page-eyebrow::before {
+  content: "";
+  display: inline-block;
+  width: 18px;
+  height: 1px;
+  background: var(--color-brand);
+}

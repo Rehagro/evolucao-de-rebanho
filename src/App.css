@@ -1,0 +1,10 @@
+/*
+ * App.css — vazio.
+ *
+ * Estilos globais migrados para src/index.css (tokens Tailwind 4 + base).
+ * Estilos específicos do EvolutionGrid foram para src/styles/charts.css,
+ * importado direto por GraficoRebanho.tsx.
+ *
+ * Mantemos este arquivo apenas para preservar o import em main.tsx;
+ * pode ser removido com seu import quando conveniente.
+ */

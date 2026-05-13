@@ -1,0 +1,83 @@
+/*
+ * charts.css — estilos específicos do EvolutionGrid (GraficoRebanho.tsx).
+ *
+ * Mantidos como CSS clássico porque são inputs custom altamente densos
+ * (descarte mensal e compra/venda) usados num grid SVG-like.
+ *
+ * Onda 2 vai re-estilizar com tokens do design system Rehagro. Por enquanto,
+ * preservamos o visual original para não regredir.
+ */
+
+/* ─── Category toggle pills (toggles de visibilidade no gráfico) ────── */
+.cat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .15s;
+  border: 1.5px solid;
+  white-space: nowrap;
+}
+
+/* ─── Horizon selector (12m / 24m / 36m) ─────────────────────────────── */
+.hz-btn {
+  padding: 4px 12px;
+  border-radius: 99px;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  transition: all .15s;
+}
+.hz-btn.act             { background: var(--color-data-vl); color: white; }
+.hz-btn:not(.act)       { background: transparent; color: var(--color-ink-4); }
+.hz-btn:hover:not(.act) { background: var(--color-surface-2); color: var(--color-ink-2); }
+
+/* ─── Descarte override inputs (override mensal de descarte na grade) ── */
+.disc-input {
+  width: 100%;
+  padding: 3px 2px;
+  border: 1px solid var(--color-line);
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-family: inherit;
+  text-align: center;
+  background: var(--color-surface-pure);
+  color: var(--color-ink-2);
+  transition: all .12s;
+  font-weight: 500;
+  outline: none;
+}
+.disc-input:focus { border-color: var(--color-brand); background: var(--color-brand-tint-2); }
+.disc-input.ov    { background: var(--color-median); border-color: var(--color-median-fg); color: var(--color-median-fg); font-weight: 700; }
+
+/* ─── Compra/venda inputs (linha de aquisições e vendas) ─────────────── */
+.cv-input {
+  width: 100%;
+  height: 24px;
+  padding: 0 3px;
+  line-height: 24px;
+  border: 1.5px solid var(--color-line);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  text-align: center;
+  background: var(--color-surface-pure);
+  color: var(--color-ink-4);
+  outline: none;
+  transition: all .15s;
+  display: block;
+}
+.cv-input:hover              { border-color: var(--color-line-2); }
+.cv-input:focus              { border-color: var(--color-brand); background: var(--color-brand-tint-2); color: var(--color-ink); box-shadow: 0 0 0 3px rgba(26,127,60,0.15); }
+.cv-input.pos                { color: var(--color-status-top); font-weight: 700; background: var(--color-brand-tint-2); border-color: var(--color-brand-soft); }
+.cv-input.pos:focus          { border-color: var(--color-brand); box-shadow: 0 0 0 3px rgba(91,159,73,0.15); }
+.cv-input.neg                { color: var(--color-status-bad); font-weight: 700; background: rgba(185,72,52,0.06); border-color: rgba(185,72,52,0.4); }
+.cv-input.neg:focus          { border-color: var(--color-status-bad); box-shadow: 0 0 0 3px rgba(185,72,52,0.15); }
