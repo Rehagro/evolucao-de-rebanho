@@ -31,22 +31,28 @@ type MesKey = typeof MESES_KEY[number]
 type TaxaKey = 'taxaServicoCacas' | 'taxaConcepcaoVacas' | 'taxaServico_Novilhas' | 'taxaConcepcao_Novilhas'
 
 /**
- * Calcula o período de cada bloco de serviços históricos (Param!B26-C27 da planilha).
+ * Calcula o período de cada bloco de serviços históricos (Param!B26-C27 / B32-C33).
  *
- * Planilha: B27 (fim do período 1) = `J9 − 280`, onde J9 = Evolução!K14 = último dia
- * 8 meses após o 1° mês projetado (= ref + 9 meses, EOMONTH).
+ * Planilha: B27 (fim do período 1) = `J9 − 280`, onde J9 = Evolução!K14 = último dia do
+ * mês 9 da projeção (= mês 1 + 8 meses; EOMONTH(mês1, 8)). Vacas e novilhas usam AS
+ * MESMAS datas — B32/B33 referenciam B26/B27.
  *
- * Para Bela Vista: ref = 31/03/2026 → 1º mês = abr/26 → K14 = 31/12/2026 → ate1 = 31/12 − 280 ≈ 26/03/2026.
+ * Convenção do motor (projecao.ts:326): i=0 (= mês 1 da projeção) = MÊS de
+ * `dataReferencia`. Logo, mês 9 = `dataReferencia.month + 8` (0-idx).
  *
- * @param dataRef Data de referência (último upload do Ideagri = último dia do mês ANTES do 1º projetado)
+ * Bela Vista: ref = 30/04/2026 → mês 1 = abr/26 → mês 9 = dez/26 → K14 = 31/12/2026
+ * → ate1 = 31/12 − 280 = 26/03/2026.
+ *
+ * @param dataRef Data de referência (último upload do Ideagri; mês = 1º mês projetado)
  * @param idx     Índice do período (0 = 1º bloco, 1 = 2º bloco, ...)
  */
 function calcularDatasServicoHelper(dataRef: Date | undefined | null, idx: number) {
   if (!dataRef) return null
   const ref = new Date(dataRef)
-  // K14 = último dia de (mês de ref + 9). Em JS: new Date(year, month+10, 0) retorna o dia 0
-  // do mês month+10 = último dia de month+9.
-  const k14 = new Date(ref.getFullYear(), ref.getMonth() + 10, 0)
+  // K14 = EOMONTH(mês 1 + 8 meses). Mês 1 = ref.getMonth() (0-idx). Em JS,
+  // new Date(y, m, 0) = último dia do mês (m-1) em base 0-idx = mês m em 1-idx.
+  // Queremos último dia do mês (ref.month + 8) em 0-idx = mês (ref.month + 9) em 1-idx.
+  const k14 = new Date(ref.getFullYear(), ref.getMonth() + 9, 0)
   let ateDate = new Date(k14.getTime() - 280 * 86400000)
   let deDate = new Date(ateDate.getTime() - 30 * 86400000)
   for (let k = 0; k < idx; k++) {
@@ -65,6 +71,15 @@ export function TelaParametros({
 
   const setMensal = (key: TaxaKey, mes: MesKey, valuePct100: number) => {
     onParamChange(key, { ...parametros[key], [mes]: valuePct100 / 100 } as TaxaConcepcaoMensal)
+  }
+
+  const setMensalAll = (key: TaxaKey, valuePct100: number) => {
+    const frac = valuePct100 / 100
+    const novo = MESES_KEY.reduce(
+      (acc, mes) => ({ ...acc, [mes]: frac }),
+      {} as TaxaConcepcaoMensal,
+    )
+    onParamChange(key, novo)
   }
 
   return (
@@ -139,10 +154,10 @@ export function TelaParametros({
       </div>
 
       {tab === 'vacas' && (
-        <TabVacas parametros={parametros} onParamChange={onParamChange} setMensal={setMensal} fazenda={fazenda} />
+        <TabVacas parametros={parametros} onParamChange={onParamChange} setMensal={setMensal} setMensalAll={setMensalAll} fazenda={fazenda} />
       )}
       {tab === 'novilhas' && (
-        <TabNovilhas parametros={parametros} onParamChange={onParamChange} setMensal={setMensal} fazenda={fazenda} estado={estado} />
+        <TabNovilhas parametros={parametros} onParamChange={onParamChange} setMensal={setMensal} setMensalAll={setMensalAll} fazenda={fazenda} estado={estado} />
       )}
       {tab === 'manejo' && (
         <TabManejo parametros={parametros} onParamChange={onParamChange} />
@@ -178,10 +193,11 @@ interface TabVacasProps {
   parametros: Parametros
   onParamChange: <K extends keyof Parametros>(key: K, value: Parametros[K]) => void
   setMensal: (key: TaxaKey, mes: MesKey, valuePct100: number) => void
+  setMensalAll: (key: TaxaKey, valuePct100: number) => void
   fazenda: Fazenda
 }
 
-function TabVacas({ parametros, onParamChange, setMensal, fazenda }: TabVacasProps) {
+function TabVacas({ parametros, onParamChange, setMensal, setMensalAll, fazenda }: TabVacasProps) {
   const setServico = (idx: number, field: 'nServicos' | 'txConcepcao', value: number) => {
     const arr = [...(parametros.servicosRealizados_Vacas ?? [])]
     arr[idx] = { ...arr[idx], [field]: value }
@@ -243,12 +259,14 @@ function TabVacas({ parametros, onParamChange, setMensal, fazenda }: TabVacasPro
             term="TS"
             data={parametros.taxaServicoCacas}
             onChangeMes={(mes, pct100) => setMensal('taxaServicoCacas', mes, pct100)}
+            onApplyAll={pct100 => setMensalAll('taxaServicoCacas', pct100)}
           />
           <TaxaMensalGrid
             label="Taxa de concepção por mês do ano"
             term="TC"
             data={parametros.taxaConcepcaoVacas}
             onChangeMes={(mes, pct100) => setMensal('taxaConcepcaoVacas', mes, pct100)}
+            onApplyAll={pct100 => setMensalAll('taxaConcepcaoVacas', pct100)}
           />
         </CardContent>
       </Card>
@@ -282,7 +300,7 @@ function TabVacas({ parametros, onParamChange, setMensal, fazenda }: TabVacasPro
         <CardContent className="space-y-4">
           <p className="text-xs text-ink-3">
             Inseminações realizadas nos períodos sem previsão confirmada de parto.
-            Datas são calculadas automaticamente: <strong>parto previsto (= último dia 8 meses após o 1° mês projetado) − 280 dias de gestação</strong>.
+            Datas são calculadas automaticamente: <strong>parto previsto (= último dia do 9° mês projetado) − 280 dias de gestação</strong>.
             Cada período cobre 30 dias.
           </p>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-md">
@@ -351,10 +369,11 @@ interface TabNovilhasProps {
   estado: EstadoAtualRebanho
   onParamChange: <K extends keyof Parametros>(key: K, value: Parametros[K]) => void
   setMensal: (key: TaxaKey, mes: MesKey, valuePct100: number) => void
+  setMensalAll: (key: TaxaKey, valuePct100: number) => void
   fazenda: Fazenda
 }
 
-function TabNovilhas({ parametros, estado, onParamChange, setMensal, fazenda }: TabNovilhasProps) {
+function TabNovilhas({ parametros, estado, onParamChange, setMensal, setMensalAll, fazenda }: TabNovilhasProps) {
   const setPerda = (idx: number, valuePct100: number) => {
     const arr = [...parametros.perdasPrenhez_Novilha]
     arr[idx] = valuePct100 / 100
@@ -428,12 +447,14 @@ function TabNovilhas({ parametros, estado, onParamChange, setMensal, fazenda }: 
             term="TS"
             data={parametros.taxaServico_Novilhas}
             onChangeMes={(mes, pct100) => setMensal('taxaServico_Novilhas', mes, pct100)}
+            onApplyAll={pct100 => setMensalAll('taxaServico_Novilhas', pct100)}
           />
           <TaxaMensalGrid
             label="Taxa de concepção por mês do ano"
             term="TC"
             data={parametros.taxaConcepcao_Novilhas}
             onChangeMes={(mes, pct100) => setMensal('taxaConcepcao_Novilhas', mes, pct100)}
+            onApplyAll={pct100 => setMensalAll('taxaConcepcao_Novilhas', pct100)}
           />
         </CardContent>
       </Card>
@@ -478,8 +499,8 @@ function TabNovilhas({ parametros, estado, onParamChange, setMensal, fazenda }: 
         <CardContent className="space-y-4">
           <p className="text-xs text-ink-3">
             Inseminações realizadas em novilhas nos períodos sem previsão confirmada de parto.
-            Equivalente à aba Parâmetros da planilha (B28/C28). Datas calculadas a partir de
-            <strong> parto previsto (8 meses após o 1° mês projetado) − 280 dias de gestação</strong>.
+            Equivalente à aba Parâmetros da planilha (B28/C28). Datas calculadas a partir do
+            <strong> parto previsto (= último dia do 9° mês projetado) − 280 dias de gestação</strong>.
             Cada período cobre 30 dias.
           </p>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-md">
@@ -648,12 +669,13 @@ function TabManejo({ parametros, onParamChange }: TabManejoProps) {
 // ─── Componentes auxiliares ────────────────────────────────────────────────────
 
 function TaxaMensalGrid({
-  label, term, data, onChangeMes,
+  label, term, data, onChangeMes, onApplyAll,
 }: {
   label: string
   term?: 'TS' | 'TC'
   data: TaxaConcepcaoMensal
   onChangeMes: (mes: MesKey, pct100: number) => void
+  onApplyAll: (pct100: number) => void
 }) {
   const mediaPct = Object.values(data).reduce((a, b) => a + b, 0) / 12 * 100
   const [bulkText, setBulkText] = useState('')
@@ -664,7 +686,7 @@ function TaxaMensalGrid({
     const pct = parseFloat(raw)
     if (Number.isNaN(pct)) { setBulkText(''); return }
     const clamped = Math.max(0, Math.min(100, pct))
-    MESES_KEY.forEach(mes => onChangeMes(mes, clamped))
+    onApplyAll(clamped)
     setBulkText('')
   }
 
