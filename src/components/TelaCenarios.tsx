@@ -6,6 +6,7 @@ import { Modal } from './ui/Modal'
 import { Seg } from './ui/Seg'
 import { CenarioPainel } from './ui/CenarioPainel'
 import { calcularProjecao } from '@/engine/projecao'
+import { resolverMesInicio } from '@/lib/dataProjecao'
 import { clearCenario, promoverBparaA, getFazenda } from '@/lib/storage'
 import { CORES_CATEGORIAS, LABELS_CATEGORIAS, ORDEM_CATEGORIAS, type CategoriaRebanho } from '@/lib/coresCategorias'
 import type { Fazenda, Cenario, ResultadoProjecao, Parametros } from '@/types'
@@ -24,10 +25,10 @@ function projetar(snapshot: Cenario, fazenda: Fazenda, horizonteMinimo: number):
   }
   if (!snapshot.estadoAtual) return null
   if (snapshot.estadoAtual.vacasLactacao === 0) return null
-  const dataRef = fazenda.dataUltimoUpload ? new Date(fazenda.dataUltimoUpload) : new Date()
   // Cache não cobre — recalcula com horizonteMeses suficiente.
   const horizonteAjustado = Math.max(snapshot.parametros.horizonteMeses, horizonteMinimo) as Parametros['horizonteMeses']
   const params: Parametros = { ...snapshot.parametros, horizonteMeses: horizonteAjustado }
+  const dataRef = resolverMesInicio(params, fazenda)
   return calcularProjecao(
     params,
     snapshot.estadoAtual,

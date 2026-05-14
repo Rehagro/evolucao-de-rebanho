@@ -4,6 +4,7 @@ import { getFazenda, saveFazenda } from '@/lib/storage'
 import { calcularProjecao } from '@/engine/projecao'
 import { exportCSV } from '@/lib/exportCSV'
 import { DEFAULT_PARAMETROS } from '@/lib/defaults'
+import { resolverMesInicio } from '@/lib/dataProjecao'
 import type {
   Fazenda,
   ResultadoProjecao,
@@ -104,7 +105,7 @@ export function DashboardFazenda({ fazendaId, onVoltar }: Props) {
   const projecao = useMemo<ResultadoProjecao | null>(() => {
     if (!fazenda || !parametrosEfetivos || !estadoEfetivo) return null
     if (estadoEfetivo.vacasLactacao === 0) return null
-    const dataRef = fazenda.dataUltimoUpload ? new Date(fazenda.dataUltimoUpload) : new Date()
+    const dataRef = resolverMesInicio(parametrosEfetivos, fazenda)
     // Projeta no máximo entre o param da fazenda e o toggle escolhido — sem poluir rascunho.
     const meses = Math.max(parametrosEfetivos.horizonteMeses, hz) as Parametros['horizonteMeses']
     const paramsFull: Parametros = { ...parametrosEfetivos, horizonteMeses: meses }

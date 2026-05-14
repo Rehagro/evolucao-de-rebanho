@@ -7,6 +7,7 @@ import { Seg } from './ui/Seg'
 import { ParametroField, ParametroFieldPct } from './ui/ParametroField'
 import { InfoTooltip } from './ui/InfoTooltip'
 import { DEFAULT_PARAMETROS } from '@/lib/defaults'
+import { resolverMesInicio } from '@/lib/dataProjecao'
 import { preverLiberacaoNovilhas } from '@/engine/projecao'
 import type {
   Fazenda, Parametros, EstadoAtualRebanho, TaxaConcepcaoMensal,
@@ -92,17 +93,24 @@ export function TelaParametros({
       </div>
 
       {/* Header */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-end justify-between gap-3 flex-wrap">
         <div>
           <p className="text-[11px] font-mono uppercase tracking-wider text-brand mb-1">
             Parâmetros
           </p>
           <h1 className="font-display text-[26px] leading-tight text-ink">{fazenda.nome}</h1>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setConfirmRestaurar(true)}>
-          <RotateCcw size={14} />
-          Restaurar padrões
-        </Button>
+        <div className="flex items-end gap-3 flex-wrap">
+          <MesInicioProjecaoField
+            value={parametros.mesInicioProjecao}
+            fallback={resolverMesInicio(parametros, fazenda)}
+            onChange={v => onParamChange('mesInicioProjecao', v)}
+          />
+          <Button variant="outline" size="sm" onClick={() => setConfirmRestaurar(true)}>
+            <RotateCcw size={14} />
+            Restaurar padrões
+          </Button>
+        </div>
       </div>
 
       {/* Estado Atual — sempre visível */}
@@ -219,7 +227,7 @@ function TabVacas({ parametros, onParamChange, setMensal, setMensalAll, fazenda 
     arr[idx] = valuePct100 / 100
     onParamChange('perdasPrenhez_Vaca', arr)
   }
-  const calcularDatasServico = calcularDatasServicoHelper
+  const dataInicio = resolverMesInicio(parametros, fazenda)
 
   return (
     <div className="space-y-6">
@@ -314,7 +322,7 @@ function TabVacas({ parametros, onParamChange, setMensal, setMensalAll, fazenda 
 
           <div className="space-y-3">
             {(parametros.servicosRealizados_Vacas ?? []).map((s, idx) => {
-              const datas = calcularDatasServico(fazenda.rebanhoAtual?.dataReferencia, idx)
+              const datas = calcularDatasServicoHelper(dataInicio, idx)
               const partosEstimados = Math.round(
                 s.nServicos * s.txConcepcao * (1 - (parametros.perdaPrenhez_Total_Vaca ?? 0.20)),
               )
@@ -396,7 +404,7 @@ function TabNovilhas({ parametros, estado, onParamChange, setMensal, setMensalAl
     if (arr.length <= 1) return
     onParamChange('servicosRealizados_Novilhas', arr.slice(0, -1))
   }
-  const calcularDatasServico = calcularDatasServicoHelper
+  const dataInicio = resolverMesInicio(parametros, fazenda)
 
   return (
     <div className="space-y-6">
@@ -514,7 +522,7 @@ function TabNovilhas({ parametros, estado, onParamChange, setMensal, setMensalAl
 
           <div className="space-y-3">
             {(parametros.servicosRealizados_Novilhas ?? []).map((s, idx) => {
-              const datas = calcularDatasServico(fazenda.rebanhoAtual?.dataReferencia, idx)
+              const datas = calcularDatasServicoHelper(dataInicio, idx)
               const partosEstimados = Math.round(
                 s.nServicos * s.txConcepcao * (1 - (parametros.perdaPrenhez_Total_Novilha ?? 0.10)),
               )
@@ -727,6 +735,63 @@ function TaxaMensalGrid({
       <p className="text-[11px] text-ink-4 mt-1.5 font-mono tabular-nums">
         Média anual: {mediaPct.toFixed(1).replace('.', ',')}%
       </p>
+    </div>
+  )
+}
+
+const MES_NOMES = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+]
+
+function MesInicioProjecaoField({
+  value, fallback, onChange,
+}: {
+  value: string | undefined
+  fallback: Date
+  onChange: (v: string) => void
+}) {
+  // Mês e ano efetivos exibidos (preenche com fallback quando ainda não há valor explícito).
+  const efetivo = value && /^\d{4}-\d{2}$/.test(value)
+    ? { ano: Number(value.slice(0, 4)), mes: Number(value.slice(5, 7)) }
+    : { ano: fallback.getFullYear(), mes: fallback.getMonth() + 1 }
+
+  const anoBase = new Date().getFullYear()
+  const anos = [anoBase - 1, anoBase, anoBase + 1, anoBase + 2, anoBase + 3, anoBase + 4]
+  if (!anos.includes(efetivo.ano)) anos.push(efetivo.ano)
+  anos.sort((a, b) => a - b)
+
+  const emit = (mes: number, ano: number) => {
+    onChange(`${ano}-${String(mes).padStart(2, '0')}`)
+  }
+
+  const selectCls = "bg-surface-pure border border-line rounded-md px-2 py-1.5 text-sm text-ink font-mono tabular-nums outline-none focus:border-brand focus:ring-1 focus:ring-brand/30"
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs font-medium text-ink-2">
+        Mês de início da projeção
+      </label>
+      <div className="flex items-center gap-2">
+        <select
+          aria-label="Mês"
+          value={efetivo.mes}
+          onChange={e => emit(parseInt(e.target.value), efetivo.ano)}
+          className={selectCls}
+        >
+          {MES_NOMES.map((nome, i) => (
+            <option key={i + 1} value={i + 1}>{nome}</option>
+          ))}
+        </select>
+        <select
+          aria-label="Ano"
+          value={efetivo.ano}
+          onChange={e => emit(efetivo.mes, parseInt(e.target.value))}
+          className={selectCls}
+        >
+          {anos.map(a => <option key={a} value={a}>{a}</option>)}
+        </select>
+      </div>
     </div>
   )
 }

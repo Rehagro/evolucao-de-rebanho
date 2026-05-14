@@ -84,6 +84,10 @@ export interface Parametros {
   // Default: ~30 dias após dataReferencia (= 05/05 quando DATA_REF=31/03).
   dataReferenciaSecagem?: Date;
 
+  // Mês de início da projeção (= mês 1, i=0 do motor). Formato 'YYYY-MM'.
+  // Input do usuário na aba Parâmetros. Fallback: mês de `fazenda.dataUltimoUpload`.
+  mesInicioProjecao?: string;
+
   // Mortalidade jovens por faixa (por mês da coorte)
   mortalidade_0_3m: number;   // 0.03
   mortalidade_3_6m: number;   // 0.01
