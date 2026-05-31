@@ -117,23 +117,8 @@ export function TelaParametros({
       <Card>
         <CardHeader><CardTitle>Estado Atual do Rebanho</CardTitle></CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {([
-              ['vacasLactacao', 'Vacas em lactação', undefined],
-              ['vacasSecas', 'Vacas secas', undefined],
-              ['vacasVaziasAptas', 'Vacas vazias aptas', 'APTA'],
-              ['vacasAtrasadas', 'Vacas atrasadas (em IA)', 'ATRASADA'],
-              ['vacasInseminadas_lt25', 'Vacas inseminadas < 25d', undefined],
-              ['vacasInseminadas_gt25', 'Vacas inseminadas > 25d', undefined],
-              ['novilhasVaziasAptas', 'Novilhas vazias aptas', undefined],
-              ['novilhasAtrasadas', 'Novilhas atrasadas', undefined],
-              ['novilhasInseminadas_lt25', 'Novilhas inseminadas < 25d', undefined],
-              ['novilhasInseminadas_gt25', 'Novilhas inseminadas > 25d', undefined],
-              ['bezerrasMenores180d', 'Bezerras < 180 dias', undefined],
-              ['bezerrasNovilhas180dAteAptas', 'Bezerras/novilhas 180d–aptas', undefined],
-              ['partosUltimos30d', 'Partos últimos 30 dias', undefined],
-              ['partos31a60d', 'Partos 31–60 dias atrás', undefined],
-            ] as const).map(([key, label, term]) => (
+          {(() => {
+            const renderCampo = ([key, label, term]: readonly [string, string, string | undefined]) => (
               <ParametroField
                 key={key}
                 label={label}
@@ -143,8 +128,42 @@ export function TelaParametros({
                 step={1}
                 min={0}
               />
-            ))}
-          </div>
+            )
+            const camposVacas = [
+              ['vacasLactacao', 'Vacas em lactação', undefined],
+              ['vacasSecas', 'Vacas secas', undefined],
+              ['vacasVaziasAptas', 'Vacas vazias aptas', 'APTA'],
+              ['vacasAtrasadas', 'Vacas atrasadas (em IA)', 'ATRASADA'],
+              ['vacasInseminadas_lt25', 'Vacas inseminadas < 25d', undefined],
+              ['vacasInseminadas_gt25', 'Vacas inseminadas > 25d', undefined],
+              ['partosUltimos30d', 'Partos últimos 30 dias', undefined],
+              ['partos31a60d', 'Partos 31–60 dias atrás', undefined],
+            ] as const
+            const camposNovilhas = [
+              ['novilhasVaziasAptas', 'Novilhas vazias aptas', undefined],
+              ['novilhasAtrasadas', 'Novilhas atrasadas', undefined],
+              ['novilhasInseminadas_lt25', 'Novilhas inseminadas < 25d', undefined],
+              ['novilhasInseminadas_gt25', 'Novilhas inseminadas > 25d', undefined],
+              ['bezerrasMenores180d', 'Bezerras < 180 dias', undefined],
+              ['bezerrasNovilhas180dAteAptas', 'Bezerras/novilhas 180d–aptas', undefined],
+            ] as const
+            return (
+              <div className="grid grid-cols-1 lg:grid-cols-2 lg:divide-x lg:divide-line">
+                <div className="lg:pr-8 pb-6 lg:pb-0">
+                  <p className="text-[11px] font-mono uppercase tracking-wider text-brand mb-3">Vacas</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    {camposVacas.map(renderCampo)}
+                  </div>
+                </div>
+                <div className="lg:pl-8 pt-6 lg:pt-0 border-t lg:border-t-0 border-line">
+                  <p className="text-[11px] font-mono uppercase tracking-wider text-brand mb-3">Novilhas</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    {camposNovilhas.map(renderCampo)}
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
         </CardContent>
       </Card>
 
