@@ -23,12 +23,13 @@ import { TelaForragem } from '@/components/TelaForragem'
 import { TelaCenarios } from '@/components/TelaCenarios'
 import { TelaPrevistoRealizado } from '@/components/TelaPrevistoRealizado'
 import { TelaMetaInseminacao } from '@/components/TelaMetaInseminacao'
+import { TelaAjuda } from '@/components/TelaAjuda'
 import { RehagroLogo } from '@/components/ui/RehagroLogo'
 import { DraftFAB } from '@/components/ui/DraftFAB'
 import { Stepper, type StepperStep } from '@/components/ui/Stepper'
 import { Tag } from '@/components/ui/Tag'
 
-type Aba = 'dashboard' | 'tabela' | 'secagem' | 'forragem' | 'meta-ia' | 'cenarios' | 'previsto' | 'parametros' | 'upload'
+type Aba = 'dashboard' | 'tabela' | 'secagem' | 'forragem' | 'meta-ia' | 'cenarios' | 'previsto' | 'parametros' | 'ajuda' | 'upload'
 
 const TABS: { id: Aba; label: string }[] = [
   { id: 'dashboard', label: 'Dashboard' },
@@ -39,6 +40,7 @@ const TABS: { id: Aba; label: string }[] = [
   { id: 'cenarios',  label: 'Cenários' },
   { id: 'previsto',  label: 'Previsto × Realizado' },
   { id: 'parametros', label: 'Parâmetros' },
+  { id: 'ajuda',     label: 'Ajuda' },
 ]
 
 const MESES_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
@@ -236,7 +238,7 @@ export function DashboardFazenda({ fazendaId, onVoltar }: Props) {
     : 'red'
   const inicial = fazenda.nome.charAt(0).toUpperCase()
 
-  const showSidebar = sidebarOpen && aba !== 'upload' && aba !== 'parametros'
+  const showSidebar = sidebarOpen && aba !== 'upload' && aba !== 'parametros' && aba !== 'ajuda'
 
   const renderConteudo = () => {
     if (aba === 'parametros') {
@@ -255,6 +257,10 @@ export function DashboardFazenda({ fazendaId, onVoltar }: Props) {
     }
     if (aba === 'upload') {
       return <TelaUpload fazenda={fazenda} onSalvar={atualizarFazenda} onConcluir={() => setAba('dashboard')} />
+    }
+    // FAQ é conteúdo de referência estático — disponível mesmo sem dados importados.
+    if (aba === 'ajuda') {
+      return <TelaAjuda />
     }
 
     if (semDados) {
